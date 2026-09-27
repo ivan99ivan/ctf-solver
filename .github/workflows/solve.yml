@@ -1,0 +1,40 @@
+name: Solve CTF Challenge
+
+on:
+  workflow_dispatch: # Allows manual trigger
+  push:
+    branches: [ main ] # Triggers on push to main
+
+jobs:
+  solve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 600 # 10 hours max safety net
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++
+          pip install cryptography
+
+      - name: Run Solver
+        id: run_solver
+        run: |
+          echo "Starting solver..."
+          python3 solver.py > output.txt
+          cat output.txt # Print to logs so we see progress/errors
+      
+      - name: Upload Answer Artifact
+        if: always() # Upload even if decryption fails (to debug)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctf-answer
+          path: output.txt
