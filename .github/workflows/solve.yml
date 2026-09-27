@@ -1,40 +1,66 @@
-name: Solve CTF Challenge
+name: Solve CTF Challenge (Split)
 
 on:
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
   push:
-    branches: [ main ] # Triggers on push to main
+    branches: [ main ]
 
 jobs:
-  solve:
+  part1:
     runs-on: ubuntu-latest
-    timeout-minutes: 600 # 10 hours max safety net
-    
+    timeout-minutes: 350 # ~5.8 hours safety margin
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-
-      - name: Install Dependencies
+      - name: Install Deps
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential g++
           pip install cryptography
-
-      - name: Run Solver
-        id: run_solver
+      - name: Run Part 1 (First Half)
+        env:
+          MODE: "PART1"
+          ITERATIONS: 5000000000
         run: |
-          echo "Starting solver..."
-          python3 solver.py > output.txt
-          cat output.txt # Print to logs so we see progress/errors
-      
-      - name: Upload Answer Artifact
-        if: always() # Upload even if decryption fails (to debug)
+          python3 solver.py > partial_result_1.hex
+      - name: Upload Partial Result 1
         uses: actions/upload-artifact@v4
         with:
-          name: ctf-answer
+          name: partial-result-1
+          path: partial_result_1.hex
+
+  part2:
+    needs: part1
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Partial Result 1
+        uses: actions/download-artifact@v4
+        with:
+          name: partial-result-1
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install Deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential g++
+          pip install cryptography
+      - name: Run Part 2 (Second Half + Decrypt)
+        env:
+          MODE: "PART2"
+          INPUT_FILE: "partial_result_1.hex"
+        run: |
+          python3 solver.py > output.txt
+      - name: Show Answer
+        run: cat output.txt
+      - name: Upload Final Answer
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-answer
           path: output.txt
